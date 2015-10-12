@@ -260,6 +260,9 @@ for (i in names(train)) {
 train<-train[,setdiff(names(train),nearZeroVarFeatures)]
 test<-test[,setdiff(names(test),nearZeroVarFeatures)]
 
+## ===================== PROCESSING NEAR ZERO VARIANCE NUMERIC DATA ========================
+## ** TODO: try option 1: remove features with unique percentage< 5 % (to do)
+## **           option 2: remove features with unique percentage< 10 % (to do)
 ######### There is also a way to remove zero variance numeric features #########
 ### a function called nearZeroVar in 
 # library(caret)
