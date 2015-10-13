@@ -104,6 +104,7 @@ for (f in date.features) {
      test[[f]] <- as.double(strptime(test[[f]], format='%d%b%y:%H:%M:%S', tz="UTC"))
 }
 print (train[,(date.features), with = F])
+print (test[,(date.features), with = F])
 ## IMPlEMENTED OPTION 1 (end)
 
 ##  OPTION 2 - TO DO (begin)
@@ -129,7 +130,7 @@ print (VAR_0200.freq[VAR_0200.freq>train.size*0.005]) # returns CHICAGO
 
 ################ Parameter here: city cut off criteria 1000, 800, 500 ################
 ## IMPlEMENTED OPTION 1 (begin)
-VAR_0200.freqlevels <- names(VAR_0200.freq[VAR_0200.freq>1000])
+VAR_0200.freqlevels <- names(VAR_0200.freq[VAR_0200.freq>800])
 ## IMPlEMENTED OPTION 1 (end)
 
 print (train[,VAR_0200.freqlevels]) # [1] "CHICAGO"      "HOUSTON"      "JACKSONVILLE" "SAN ANTONIO" 
@@ -158,7 +159,8 @@ train[,VAR_0342 := (ifelse(train[,VAR_0342]=="",-1,train[,VAR_0342]))]
 test[,VAR_0237 := (ifelse(test[,VAR_0237]=="",-1,test[,VAR_0237]))]
 test[,VAR_0274 := (ifelse(test[,VAR_0274]=="",-1,test[,VAR_0274]))]
 test[,VAR_0342 := (ifelse(test[,VAR_0342]=="",-1,test[,VAR_0342]))]
-train[, (state.features), with = F]
+print(train[, (state.features), with = F])
+print(test[, (state.features), with = F])
 
 # REMAINING: [1] "VAR_0404" "VAR_0493"
 # two types: with job title and without job title
@@ -203,6 +205,7 @@ for (f in setdiff(names(train),"target")) {
 for (f in setdiff(names(train),"target")) {
      if (class(train[[f]])=="character") {
           train[[f]] = as.factor(train[[f]])
+          test[[f]] = as.factor(test[[f]])
      }
 }
 
@@ -235,8 +238,11 @@ test<-data.frame(test)
 for (i in names(train)) {
      if (class(train[,i])=="factor") {
           temp = as.character(train[,i])
+          temp_test = as.character(test[,i])
           temp = ifelse(((temp=="")|(temp=="-1")),"other",temp)
+          temp_test = ifelse(((temp_test=="")|(temp_test=="-1")),"other",temp_test)
           train[,i]=as.factor(temp)
+          test[,i]=as.factor(temp_test)
      }
 }
 
@@ -294,6 +300,17 @@ for (f in names(train)) {
 factorFeatures<-names(train)[unlist(lapply(train,class))=="factor"]
 train<-train[,setdiff(names(train),factorFeatures)]
 test<-test[,setdiff(names(test),factorFeatures)]
+
+# Double Check
+dim(train)
+dim(test)s
+unique(unlist(lapply(train,class)))
+unique(unlist(lapply(test,class)))
+# all variable names are the same
+all(setdiff(names(train),"target")==names(test))
+# all variable types match
+all(unlist(lapply(train[,setdiff(names(train),"target")],class))==unlist(lapply(test,class)))
+
 
 # save(train,test,testID,file="processed_train_test.RData")
 rm(list=setdiff(ls(),c("test","train","testID")))
