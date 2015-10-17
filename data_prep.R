@@ -1,14 +1,15 @@
-require(corrplot)
-require(Rtsne)
-require(xgboost)
-require(stats)
-require(knitr)
-require(bit64)
-require(ggplot2)
+# require(corrplot)
+# require(Rtsne)
+# require(xgboost)
+# require(stats)
+# require(knitr)
+# require(bit64)
+# require(ggplot2)
 require(data.table)
-require(graphics)
-library(RCurl) # download https data
+# require(graphics)
+# library(RCurl) # download https data
 library(data.table)
+library(lubridate)
 
 ## NOTE: the part where we may try something different will be marked with comment as follows:
 ## ** TODO: try option 1: @#$#@!@# (done)
@@ -18,11 +19,11 @@ library(data.table)
 ## Just just search for the key word: TODO to jump to the place where we would like to try out different options
 
 rm(list=ls())
-setwd("/Users/apple1/Github_Repo/Kaggle/SpringLeaf_Marketing")
+setwd("C:/Users/bli13/Documents/Kaggle")
 
 # Read in training data
-train = fread("./data/train.csv", stringsAsFactors = F)
-test = fread("./data/test.csv", stringsAsFactors = F)
+train = fread("train.csv", stringsAsFactors = F)
+test = fread("test.csv", stringsAsFactors = F)
 
 # show training and testing content
 dim(train); dim(test)
@@ -64,16 +65,16 @@ nonnumeric.featurenames<-names(nonnumeric.types)
 # double check and make sure all nonnumeric type variables are characters
 sum(nonnumeric.types!="character") # should return 0
 
-
 # a matrix that stores number of level for each "character" type variables
 factornum_df <- data.frame(matrix(NA,nrow=1,ncol=length(nonnumeric.featurenames)))
 names(factornum_df) <-nonnumeric.featurenames
 for (feature in nonnumeric.featurenames) {
-     factornum_df[1,(feature)] <- length(table(train[,(feature),with=F]))
+  factornum_df[1,(feature)] <- length(table(train[,(feature),with=F]))
 }
 print(factornum_df)
 
 # for feature with more 15 levels: see what they are actually (I suspect they may be date)
+# Why 15 levels here???
 diverse.features <- nonnumeric.featurenames[factornum_df[1,]>15]
 print (diverse.features)
 # print number of levels for each variable
@@ -98,20 +99,39 @@ print (train[,(date.features),with=F])
 ##                        as additional feature                           (to do)
 
 ## IMPlEMENTED OPTION 1 (begin)
-for (f in date.features) {
-     # Currently convert date time
-     train[[f]] <- as.double(strptime(train[[f]], format='%d%b%y:%H:%M:%S', tz="UTC"))
-     test[[f]] <- as.double(strptime(test[[f]], format='%d%b%y:%H:%M:%S', tz="UTC"))
-}
-print (train[,(date.features), with = F])
-print (test[,(date.features), with = F])
+# for (f in date.features) {
+#   # Currently convert date time
+#   train[[f]] <- as.double(strptime(train[[f]], format='%d%b%y:%H:%M:%S', tz="UTC"))
+#   test[[f]] <- as.double(strptime(test[[f]], format='%d%b%y:%H:%M:%S', tz="UTC"))
+# }
+# print (train[,(date.features), with = F])
 ## IMPlEMENTED OPTION 1 (end)
 
-##  OPTION 2 - TO DO (begin)
+##  OPTION 2 (begin)
 ############ Option 2: Extract Hours for the columns with non-00:00:00 time #############
-##
-##
-##  OPTION 2 - TO DO (end)
+print (paste('Column count before date feature:',ncol(train)))
+new.date.features <- c()
+for (f in date.features) {
+  current.time.train <- as.Date(strptime(train[[f]], format='%d%b%y:%H:%M:%S', tz="UTC"))
+  train[[paste(f,'year',sep="_")]]<-year(current.time.train)
+  train[[paste(f,'month',sep="_")]]<-month(current.time.train)
+  train[[paste(f,'day',sep="_")]]<-day(current.time.train)
+  
+  current.time.test <- as.Date(strptime(test[[f]], format='%d%b%y:%H:%M:%S', tz="UTC"))
+  test[[paste(f,'year',sep="_")]]<-year(current.time.test)
+  test[[paste(f,'month',sep="_")]]<-month(current.time.test)
+  test[[paste(f,'day',sep="_")]]<-day(current.time.test)
+  new.date.features<-c(new.date.features,paste(f,'year',sep="_"),paste(f,'month',sep="_"),paste(f,'day',sep="_"))
+}
+print (train[,(new.date.features),with=F])
+#### Remove old date feature columns ###
+train<-train[,setdiff(names(train),date.features),with=F]
+test<-test[,setdiff(names(test),date.features),with=F]
+print (paste('Column count after date feature:',ncol(train)))
+##  OPTION 2 (end)
+
+##Call garbage collection to clean memory ###
+gc()
 
 print("remaining non-date variables:")
 print(setdiff(diverse.features, date.features))
@@ -121,6 +141,8 @@ print(setdiff(diverse.features, date.features))
 ## ** TODO: try option 1: only keep levels with frequency > 1000 (done)
 ##              option 2: only keep levels with frequency > 800 (to do)
 ##              option 2: only keep levels with frequency > 500 (to do)
+## Removed all other cities... only kept cities with freq > 1000
+## Big cities more likely to respond?
 
 # FEATURE: VAR_0200 individual cities
 print(paste('number of different cities:',length(table(train[, VAR_0200]))))
@@ -130,7 +152,7 @@ print (VAR_0200.freq[VAR_0200.freq>train.size*0.005]) # returns CHICAGO
 
 ################ Parameter here: city cut off criteria 1000, 800, 500 ################
 ## IMPlEMENTED OPTION 1 (begin)
-VAR_0200.freqlevels <- names(VAR_0200.freq[VAR_0200.freq>800])
+VAR_0200.freqlevels <- names(VAR_0200.freq[VAR_0200.freq>1000])
 ## IMPlEMENTED OPTION 1 (end)
 
 print (train[,VAR_0200.freqlevels]) # [1] "CHICAGO"      "HOUSTON"      "JACKSONVILLE" "SAN ANTONIO" 
@@ -159,11 +181,11 @@ train[,VAR_0342 := (ifelse(train[,VAR_0342]=="",-1,train[,VAR_0342]))]
 test[,VAR_0237 := (ifelse(test[,VAR_0237]=="",-1,test[,VAR_0237]))]
 test[,VAR_0274 := (ifelse(test[,VAR_0274]=="",-1,test[,VAR_0274]))]
 test[,VAR_0342 := (ifelse(test[,VAR_0342]=="",-1,test[,VAR_0342]))]
-print(train[, (state.features), with = F])
-print(test[, (state.features), with = F])
+train[, (state.features), with = F]
 
 # REMAINING: [1] "VAR_0404" "VAR_0493"
 # two types: with job title and without job title
+# !!! Replaced occupations with just two levels
 jobtitle.features<-c("VAR_0404","VAR_0493")
 VAR_0404col<-train[,VAR_0404]
 sum(VAR_0404col==-1)+sum(VAR_0404col=="") # without job titles
@@ -180,33 +202,49 @@ train[ , VAR_0493 := replaced.VAR_0493col]
 test[ , VAR_0493 := replaced.VAR_0493col_test]
 train[, (jobtitle.features), with = F]
 
-# VAR_0044 should be removed
+# VAR_0044 should be removed - all empty
 train[, VAR_0044 := NULL]
 test[, VAR_0044 := NULL]
 
+gc()
+
 ## ===================== REPLACING MISSING NUMERIC DATA  =========================
 ## ** TODO: try option 1: replace with -1
-##          try option 2: replace with median
+##          try option 2: replace with median (Using this)
 ##          try option 3: replace with nearest neighbor or K nearest neighbor
 
 ## IMPlEMENTED OPTION 1 (begin)
-cat("replacing missing values with -1\n")
-for (f in setdiff(names(train),"target")) {
-     if (class(train[[f]])!="character") {
-          temp_train_col = ifelse(is.na(train[[f]]),-1,train[[f]])
-          temp_test_col = ifelse(is.na(test[[f]]),-1,test[[f]])
-          train[, (f):= temp_train_col]
-          test[, (f):= temp_test_col]
-     }
-}
+# cat("replacing missing values with -1\n")
+# for (f in setdiff(names(train),"target")) {
+#   if (class(train[[f]])!="character") {
+#     temp_train_col = ifelse(is.na(train[[f]]),-1,train[[f]])
+#     temp_test_col = ifelse(is.na(test[[f]]),-1,test[[f]])
+#     train[, (f):= temp_train_col]
+#     test[, (f):= temp_test_col]
+#   }
+# }
 ## IMPlEMENTED OPTION 1 (end)
+
+## IMPlEMENTED OPTION 2 (begin)
+cat("replacing missing values with median\n")
+for (f in setdiff(names(train),"target")) {
+  if (class(train[[f]])!="character") {
+    train_median_col<-as.numeric(train[[f]])
+    train_median_col[is.na(train_median_col)]=median(train_median_col, na.rm=TRUE)
+    test_median_col<-as.numeric(test[[f]])
+    test_median_col[is.na(test_median_col)]=median(test_median_col, na.rm=TRUE)
+    train[, (f):= train_median_col]
+    test[, (f):= test_median_col]
+  }
+}
+## IMPlEMENTED OPTION 2 (end)
 
 # convert character variable to factor/categorical
 for (f in setdiff(names(train),"target")) {
-     if (class(train[[f]])=="character") {
-          train[[f]] = as.factor(train[[f]])
-          test[[f]] = as.factor(test[[f]])
-     }
+  if (class(train[[f]])=="character") {
+    train[[f]] = as.factor(train[[f]])
+    test[[f]] = as.factor(test[[f]])
+  }
 }
 
 # Now missing data are all filled.
@@ -222,7 +260,7 @@ train[,(nonnumeric.featurenames),with=F]
 factornum_df <- data.frame(matrix(NA,nrow=1,ncol=length(nonnumeric.featurenames)))
 names(factornum_df) <-nonnumeric.featurenames
 for (feature in nonnumeric.featurenames) {
-     factornum_df[1,(feature)] <- length(table(train[,(feature),with=F]))
+  factornum_df[1,(feature)] <- length(table(train[,(feature),with=F]))
 }
 # make sure only three type of classes "integer", "factor", "numeric" exist
 feature.types<-lapply(train,class)
@@ -231,46 +269,50 @@ sum(feature.types=="integer")+sum(feature.types=="factor")+sum(feature.types=="n
 
 # ==== convert data table to data frame, simply because I want to get something done quickly, 
 # ==== and I'm a lot more comfortable with data.frame.
+
+### remove unused variables ###
+rm(list=setdiff(ls(),c("test","train","testID")))
 train<-data.frame(train)
 test<-data.frame(test)
 
 # ============= replace "-1" and "" in categorical data with label "other"  ==================
 for (i in names(train)) {
-     if (class(train[,i])=="factor") {
-          temp = as.character(train[,i])
-          temp_test = as.character(test[,i])
-          temp = ifelse(((temp=="")|(temp=="-1")),"other",temp)
-          temp_test = ifelse(((temp_test=="")|(temp_test=="-1")),"other",temp_test)
-          train[,i]=as.factor(temp)
-          test[,i]=as.factor(temp_test)
-     }
+  if (class(train[,i])=="factor") {
+    temp = as.character(train[,i])
+    temp = ifelse(((temp=="")|(temp=="-1")),"other",temp)
+    train[,i]=as.factor(temp)
+  }
 }
 
 # ================== for categorical variables with only two levels, =========================
 # === remove it if the single dominant level makes up over 99.5% (close to zero variance) ====
+
+### count number of factor columns ###
+feature.types<-lapply(train,class)
+sum(feature.types=="factor")
+
 nearZeroVarFeatures<-c()
+print (paste('Column count before cutoff:',ncol(train)))
 for (i in names(train)) {
-     if (class(train[,i])=="factor") {
-          print(paste("========= factor:",i,"============")) 
-          temp = as.character(train[,i])
-          print (unique(temp))
-          print (table(temp))
-          # if only 2 variables, look at ratio minus label count/total label count
-          if (length(unique(temp))==2) {
-               if (min(table(temp))/nrow(train)*100<0.5)
-              nearZeroVarFeatures<-c(nearZeroVarFeatures,i)
-          }
-     }
+  if (class(train[,i])=="factor") {
+    #print(paste("========= factor:",i,"============")) 
+    temp = as.character(train[,i])
+    #print (unique(temp))
+    #print (table(temp))
+    # if only 2 variables, look at ratio minus label count/total label count
+    if (length(unique(temp))==2) {
+      if (min(table(temp))/nrow(train)*100<0.5)
+        nearZeroVarFeatures<-c(nearZeroVarFeatures,i)
+    }
+  }
 }
 # remove these near zero variance categorical features
 train<-train[,setdiff(names(train),nearZeroVarFeatures)]
 test<-test[,setdiff(names(test),nearZeroVarFeatures)]
+print (paste('Column count after cutoff:',ncol(train)))
 
-## ===================== PROCESSING NEAR ZERO VARIANCE NUMERIC DATA ========================
-## ** TODO: try option 1: remove features with unique percentage< 5 % (to do)
-## **           option 2: remove features with unique percentage< 10 % (to do)
 ######### There is also a way to remove zero variance numeric features #########
-### a function called nearZeroVar in 
+### a function called nearZeroVar - x must be all numeric ###
 # library(caret)
 # print (paste('Column count before cutoff:',ncol(train)))
 # nzv <- nearZeroVar(train, saveMetrics = TRUE)
@@ -279,39 +321,29 @@ test<-test[,setdiff(names(test),nearZeroVarFeatures)]
 # percentUniqueThres=0.05
 # selectedFeatures<-rownames(nzv[nzv$percentUnique>percentUniqueThres,])
 # train<-train[,selectedFeatures]
-
+# print (paste('Column count after cutoff:',ncol(train)))
 
 ########============= The most important step!!! creating dummy variables =======########
 #Create dummy variable (with base level removed)/One-hot encoding
+print (paste('Column count before One-Hot Encoding:',ncol(train)))
 for (f in names(train)) {
-     if (class(train[,f])=="factor") {
-          alllevels= as.character(unique(train[,f]))
-          levelsWithoutBase = alllevels[(1:(length(alllevels)-1))]
-          #           print (paste("====== ",f,"======"))
-          #           print (alllevels)
-          #           print (levelsWithoutBase)
-          for (level in levelsWithoutBase) {
-               train[paste(f,level,sep="_")]<-ifelse(train[,f]==level,1,0)
-               test[paste(f,level,sep="_")]<-ifelse(test[,f]==level,1,0)
-          }
-     }
+  if (class(train[,f])=="factor") {
+    alllevels= as.character(unique(train[,f]))
+    levelsWithoutBase = alllevels[(1:(length(alllevels)-1))]
+    #           print (paste("====== ",f,"======"))
+    #           print (alllevels)
+    #           print (levelsWithoutBase)
+    for (level in levelsWithoutBase) {
+      train[paste(f,level,sep="_")]<-ifelse(train[,f]==level,1,0)
+      test[paste(f,level,sep="_")]<-ifelse(test[,f]==level,1,0)
+    }
+  }
 }
 # Remove categorical data now since dummy variable are all created 
 factorFeatures<-names(train)[unlist(lapply(train,class))=="factor"]
 train<-train[,setdiff(names(train),factorFeatures)]
 test<-test[,setdiff(names(test),factorFeatures)]
+print (paste('Column count after One-Hot Encoding:',ncol(train)))
 
-# Double Check
-dim(train)
-dim(test)s
-unique(unlist(lapply(train,class)))
-unique(unlist(lapply(test,class)))
-# all variable names are the same
-all(setdiff(names(train),"target")==names(test))
-# all variable types match
-all(unlist(lapply(train[,setdiff(names(train),"target")],class))==unlist(lapply(test,class)))
-
-
-# save(train,test,testID,file="processed_train_test.RData")
 rm(list=setdiff(ls(),c("test","train","testID")))
 save(train,test,testID,file="Processed_Data.RData")
