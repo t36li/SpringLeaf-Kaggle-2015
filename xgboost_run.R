@@ -1,8 +1,19 @@
 require(xgboost)
-setwd("/Users/apple1/Github_Repo/Kaggle/SpringLeaf_Marketing")
+library(caret)
+setwd("C:/Users/bli13/Documents/Kaggle")
 rm(list=ls())
 #source("data_prep.R")
 load("Processed_Data.RData")
+
+# Perform LASSO to select features to reduce dimensionality and resolve collinearity
+control <- trainControl(method="repeatedcv", number=5, repeats=5)
+# train the model
+model <- train(x=data.matrix(train[,setdiff(names(train),'target')]), 
+               y=data.matrix(train[,'target']), method="lasso", preProcess="scale", trControl=control)
+# estimate variable importance
+importance <- varImp(model, scale=FALSE)
+# summarize importance
+print(importance)
 
 # For cross-validation only (this does not train the model):
 # cv.res = xgb.cv(data= data.matrix(train[,setdiff(names(train),'target')]),
