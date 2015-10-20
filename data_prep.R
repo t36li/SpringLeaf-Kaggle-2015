@@ -98,37 +98,42 @@ print (train[,(date.features),with=F])
 ##          try option 3: based on either option 1 or option 2, add weekday boolean 
 ##                        as additional feature                           (to do)
 
-## IMPlEMENTED OPTION 1 (begin)
-# for (f in date.features) {
-#   # Currently convert date time
-#   train[[f]] <- as.double(strptime(train[[f]], format='%d%b%y:%H:%M:%S', tz="UTC"))
-#   test[[f]] <- as.double(strptime(test[[f]], format='%d%b%y:%H:%M:%S', tz="UTC"))
-# }
-# print (train[,(date.features), with = F])
-## IMPlEMENTED OPTION 1 (end)
-
-##  OPTION 2 (begin)
-############ Option 2: Extract Hours for the columns with non-00:00:00 time #############
-print (paste('Column count before date feature:',ncol(train)))
-new.date.features <- c()
-for (f in date.features) {
-  current.time.train <- as.Date(strptime(train[[f]], format='%d%b%y:%H:%M:%S', tz="UTC"))
-  train[[paste(f,'year',sep="_")]]<-year(current.time.train)
-  train[[paste(f,'month',sep="_")]]<-month(current.time.train)
-  train[[paste(f,'day',sep="_")]]<-day(current.time.train)
-  
-  current.time.test <- as.Date(strptime(test[[f]], format='%d%b%y:%H:%M:%S', tz="UTC"))
-  test[[paste(f,'year',sep="_")]]<-year(current.time.test)
-  test[[paste(f,'month',sep="_")]]<-month(current.time.test)
-  test[[paste(f,'day',sep="_")]]<-day(current.time.test)
-  new.date.features<-c(new.date.features,paste(f,'year',sep="_"),paste(f,'month',sep="_"),paste(f,'day',sep="_"))
+DateFeatureConvertOption=2
+if (DateFeatureConvertOption==1) {
+  ## IMPlEMENTED OPTION 1 (begin)
+  for (f in date.features) {
+    # Currently convert date time
+    train[[f]] <- as.double(strptime(train[[f]], format='%d%b%y:%H:%M:%S', tz="UTC"))
+    test[[f]] <- as.double(strptime(test[[f]], format='%d%b%y:%H:%M:%S', tz="UTC"))
+  }
+  print (train[,(date.features), with = F])
+  ## IMPlEMENTED OPTION 1 (end)
 }
-print (train[,(new.date.features),with=F])
-#### Remove old date feature columns ###
-train<-train[,setdiff(names(train),date.features),with=F]
-test<-test[,setdiff(names(test),date.features),with=F]
-print (paste('Column count after date feature:',ncol(train)))
-##  OPTION 2 (end)
+
+if (DateFeatureConvertOption==2) {
+  ##  OPTION 2 (begin)
+  ############ Option 2: Extract Hours for the columns with non-00:00:00 time #############
+  print (paste('Column count before date feature:',ncol(train)))
+  new.date.features <- c()
+  for (f in date.features) {
+    current.time.train <- as.Date(strptime(train[[f]], format='%d%b%y:%H:%M:%S', tz="UTC"))
+    train[[paste(f,'year',sep="_")]]<-year(current.time.train)
+    train[[paste(f,'month',sep="_")]]<-month(current.time.train)
+    train[[paste(f,'day',sep="_")]]<-day(current.time.train)
+    
+    current.time.test <- as.Date(strptime(test[[f]], format='%d%b%y:%H:%M:%S', tz="UTC"))
+    test[[paste(f,'year',sep="_")]]<-year(current.time.test)
+    test[[paste(f,'month',sep="_")]]<-month(current.time.test)
+    test[[paste(f,'day',sep="_")]]<-day(current.time.test)
+    new.date.features<-c(new.date.features,paste(f,'year',sep="_"),paste(f,'month',sep="_"),paste(f,'day',sep="_"))
+  }
+  print (train[,(new.date.features),with=F])
+  #### Remove old date feature columns ###
+  train<-train[,setdiff(names(train),date.features),with=F]
+  test<-test[,setdiff(names(test),date.features),with=F]
+  print (paste('Column count after date feature:',ncol(train)))
+  ##  OPTION 2 (end)
+}
 
 ##Call garbage collection to clean memory ###
 gc()
@@ -213,31 +218,37 @@ gc()
 ##          try option 2: replace with median (Using this)
 ##          try option 3: replace with nearest neighbor or K nearest neighbor
 
-## IMPlEMENTED OPTION 1 (begin)
-# cat("replacing missing values with -1\n")
-# for (f in setdiff(names(train),"target")) {
-#   if (class(train[[f]])!="character") {
-#     temp_train_col = ifelse(is.na(train[[f]]),-1,train[[f]])
-#     temp_test_col = ifelse(is.na(test[[f]]),-1,test[[f]])
-#     train[, (f):= temp_train_col]
-#     test[, (f):= temp_test_col]
-#   }
-# }
-## IMPlEMENTED OPTION 1 (end)
+replaceMissingValueOption=2
 
-## IMPlEMENTED OPTION 2 (begin)
-cat("replacing missing values with median\n")
-for (f in setdiff(names(train),"target")) {
-  if (class(train[[f]])!="character") {
-    train_median_col<-as.numeric(train[[f]])
-    train_median_col[is.na(train_median_col)]=median(train_median_col, na.rm=TRUE)
-    test_median_col<-as.numeric(test[[f]])
-    test_median_col[is.na(test_median_col)]=median(test_median_col, na.rm=TRUE)
-    train[, (f):= train_median_col]
-    test[, (f):= test_median_col]
+if (replaceMissingValueOption==1) {
+  ## IMPlEMENTED OPTION 1 (begin)
+  cat("replacing missing values with -1\n")
+  for (f in setdiff(names(train),"target")) {
+    if (class(train[[f]])!="character") {
+      temp_train_col = ifelse(is.na(train[[f]]),-1,train[[f]])
+      temp_test_col = ifelse(is.na(test[[f]]),-1,test[[f]])
+      train[, (f):= temp_train_col]
+      test[, (f):= temp_test_col]
+    }
   }
+  ## IMPlEMENTED OPTION 1 (end)
 }
-## IMPlEMENTED OPTION 2 (end)
+
+if (replaceMissingValueOption==2) {
+  ## IMPlEMENTED OPTION 2 (begin)
+  cat("replacing missing values with median\n")
+  for (f in setdiff(names(train),"target")) {
+    if (class(train[[f]])!="character") {
+      train_median_col<-as.numeric(train[[f]])
+      train_median_col[is.na(train_median_col)]=median(train_median_col, na.rm=TRUE)
+      test_median_col<-as.numeric(test[[f]])
+      test_median_col[is.na(test_median_col)]=median(test_median_col, na.rm=TRUE)
+      train[, (f):= train_median_col]
+      test[, (f):= test_median_col]
+    }
+  }
+  ## IMPlEMENTED OPTION 2 (end)
+}
 
 # convert character variable to factor/categorical
 for (f in setdiff(names(train),"target")) {
@@ -279,10 +290,15 @@ test<-data.frame(test)
 for (i in names(train)) {
   if (class(train[,i])=="factor") {
     temp = as.character(train[,i])
+    temp_test = as.character(test[,i])
     temp = ifelse(((temp=="")|(temp=="-1")),"other",temp)
+    temp_test = ifelse(((temp_test=="")|(temp_test=="-1")),"other",temp_test)
     train[,i]=as.factor(temp)
+    test[,i]=as.factor(temp_test)
   }
 }
+
+gc()
 
 # ================== for categorical variables with only two levels, =========================
 # === remove it if the single dominant level makes up over 99.5% (close to zero variance) ====
@@ -345,5 +361,21 @@ train<-train[,setdiff(names(train),factorFeatures)]
 test<-test[,setdiff(names(test),factorFeatures)]
 print (paste('Column count after One-Hot Encoding:',ncol(train)))
 
+# Double Check
+dim(train)
+dim(test)
+unique(unlist(lapply(train,class)))
+unique(unlist(lapply(test,class)))
+# all variable names are the same
+all(setdiff(names(train),"target")==names(test))
+# all variable types match
+all(unlist(lapply(train[,setdiff(names(train),"target")],class))==unlist(lapply(test,class)))
+
+##Obtain column name for dummy (0 or 1 value) columns
+
+
 rm(list=setdiff(ls(),c("test","train","testID")))
-save(train,test,testID,file="Processed_Data.RData")
+#save(train,test,testID,file="Processed_Data.RData")
+write.csv(train,file="train_clean.csv")
+write.csv(test,file="test_clean.csv")
+write.csv(testID,file="test_ID.csv")
